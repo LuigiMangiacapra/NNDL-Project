@@ -35,11 +35,7 @@ def softMax(y):
 #   the error function with respect the output.
 # - the output is the multiple-class cross-entroy function error with soft-max
 #   CE_err = - Sum_j Sum_i t_{i,j} log (z_{i,j})    
-<<<<<<< HEAD
-def crossEntropyMCSoftMax(y,t,der=0):
-    #soft max is computing considering overflow
-    z=softMax(y)
-=======
+
 def crossEntropyMCSoftMax(y,t,der=0, epsilon=1e-15):
     #soft max is computing considering overflow
     z=softMax(y)
@@ -47,7 +43,6 @@ def crossEntropyMCSoftMax(y,t,der=0, epsilon=1e-15):
     # Add epsilon to avoid division by zero and invalid multiplication
     z = np.clip(z, epsilon, 1 - epsilon)
     
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
     if der==0:
         #here the cross-entropy with soft-max is computed
         return -(t*np.log(z)).sum()

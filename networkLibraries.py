@@ -3,6 +3,8 @@ import numpy as np
 import activationFunctions as af
 import errorFunctions as myerr
 import copy as cp
+
+from copy import deepcopy
 # ************************************
 # Defined Functions:
 # - new_net(in_size,hidden_size,out_size)
@@ -203,11 +205,7 @@ def forward_prop(net,x):
 #   The second list is composed of the derivatives of 
 #   activation funcions computed into the input of each 
 #   layer
-<<<<<<< HEAD
-def train_forward_prop(net,x):
-=======
 def gradient_descent(net,x):
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
     W=get_weights(net)
     B=get_biases(net)
     AF=get_act_fun(net)
@@ -218,7 +216,7 @@ def gradient_descent(net,x):
     z.append(x)
     for l in range(ll):
         a.append(np.matmul(W[l],z[l])+B[l])
-        z_c,d_act_c=AF[l](a[l],1)
+        z_c,d_act_c=AF[l](a[l],1) #calcolo derivata della funzione di attivazione con input a[l]
         d_act.append(d_act_c)
         z.append(z_c)
    # net['Out']=z
@@ -233,24 +231,22 @@ def gradient_descent(net,x):
 #.  of output neurons, N is the number of samples
 # - It returns the list of derivatives, which is composed of
 #   the derivatives of each weight layer
-<<<<<<< HEAD
-def back_prop(net,x,t,err_fun):
-    W=net['W']
-    B=net['B']
-    dep=net['Depth']
-    l_z,l_da=train_forward_prop(net,x)
-=======
+
 def back_prop(net,l_da,l_z,t,err_fun):
     W=net['W']
     B=net['B']
     dep=net['Depth']
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
+    
+    # CALCOLO DEL DELTA PER L'ULTIMO LIVELLO
     #-1 refers to the last element of the list
-    d_err=err_fun(l_z[-1],t,1)
+    d_err=err_fun(l_z[-1],t,1) #Calcola la derivata della funzione di errore rispetto all'ultimo output della rete utilizzando la funzione di errore fornita
     #here delta are computed
     #**************************
     delta=[]
-    delta.insert(0,l_da[-1]*d_err)
+    #Calcolo di delta = dE(n)/da_i
+    delta.insert(0,l_da[-1]*d_err)  #Inserisce il prodotto della derivata dell'errore dell'ultimo input a_i (l_da) in posizione 0 nella lista (RICORDARE CHE Y è STATO OTTENUTO TRAMITE L'UTILIZZO DELLA FUNZIONE DI ATTIVAZIONE DEL LIVELLO RPECEDENTE)
+    
+    #CALCOLO DEL DELTA PER I LIVELLI PRECEDENTI
     for l in range(dep-1,0,-1):
         #print('l:',l)
         # transpose method does not affect the source matrix
@@ -259,9 +255,8 @@ def back_prop(net,l_da,l_z,t,err_fun):
         #print('l_da[l-1]:',l_da[l-1].shape)
         d_c= l_da[l-1]*np.matmul(W[l].transpose(),delta[0])
         delta.insert(0,d_c)
-    #**************************
-    #here derivatives are computed
-    #**************************
+    
+    # calcolo della local low cioè di dE(n)/dW_ij = delta_i * z_j
     l_der=[]
     b_der=[]
     for l in range(0,dep):
@@ -272,128 +267,57 @@ def back_prop(net,l_da,l_z,t,err_fun):
     return l_der,b_der
     
 
-<<<<<<< HEAD
-def rpropTrainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100, errFun=myerr.crossEntropyMCSoftMax):
-    # Initialize update values
-    deltaW = [0.1]*len(net['W'])
-    deltaB = [0.1]*len(net['B'])
-    
-    oldDerW, oldDerB = [0]*len(net['W']), [0]*len(net['B'])
-    
-    for epoch in range(maxNumEpoches):
-        derW, derB = back_prop(net, XTrain, YTrain, errFun)
-        
-        for l in range(len(net['W'])):
-            # If the derivative has the same sign, increase delta, else decrease it
-            deltaW[l] = deltaW[l]*1.2 if oldDerW[l]*derW[l] > 0 else deltaW[l]*0.5
-            deltaB[l] = deltaB[l]*1.2 if oldDerB[l]*derB[l] > 0 else deltaB[l]*0.5
-            
-            # If the derivative has the same sign, update the weight/bias
-            if oldDerW[l]*derW[l] > 0:
-                net['W'][l] -= np.sign(derW[l])*deltaW[l]
-            if oldDerB[l]*derB[l] > 0:
-                net['B'][l] -= np.sign(derB[l])*deltaB[l]
-            
-            # Update the old derivatives
-            oldDerW[l], oldDerB[l] = derW[l], derB[l]
-    
-    return net
-
-
-    
-=======
-def rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB, posEta=1.2, negEta=0.5):
+def rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB, posEta=1.2, negEta=0.5, stepSizesPlus=50, stepSizesMinus=0.00001):
     
     for l in range(len(net['W'])):
-        for k in range(len(net['W'][l])):
-            for m in range(len(net['W'][l][k])):
+        for k in range(len(derW[l])):
+            for m in range(len(derW[l][k])):
+                #print('\nnetW Prima: ',net['W'][l][k][m])
                 #print('\nderW: ',derW[l][k][m], '\noldDerW: ',oldDerW[l])
                 # If the derivative has the same sign, increase delta, else decrease it
-                if oldDerW[l] * derW[l][k][m] > 0:
-                    deltaW[l] = deltaW[l] * posEta
-                    #print('\ndeltaW1: ',deltaW[l])
-                else:
-                    deltaW[l] = deltaW[l] * negEta
-                    #print('\ndeltaW2: ',deltaW[l])
-                    
-                if oldDerB[l] * derB[l][k][0] > 0:
-                    deltaB[l] = deltaB[l] * posEta
-                    #print('\ndeltaB1: ',deltaB[l])
-                else:
-                    deltaB[l] = deltaB[l] * negEta
-                    #print('\ndeltaB2: ',deltaB[l])
-                    
+                if oldDerW[l][k][m] * derW[l][k][m] > 0:
+                    deltaW[l][k][m] = min(deltaW[l][k][m] * posEta, stepSizesPlus)
+                    #print('\ndeltaW1: ',deltaW[l][k][m])
+                elif oldDerW[l][k][m] * derW[l][k][m] < 0:
+                    deltaW[l][k][m] = max(deltaW[l][k][m] * negEta, stepSizesMinus)
+                    #print('\ndeltaW2: ',deltaW[l][k][m])
                 
                 # If the derivative has the same sign, update the weight/bias
-                if oldDerW[l] * derW[l][k][m] > 0:
-                    net['W'][l][k][m] -= np.clip(np.sign(derW[l][k][m]) * deltaW[l], -1e10, 1e10)
-                    #print('\nnetW: ',net['W'][l][k][m])
-                if oldDerB[l] * derB[l][k][0] > 0:
-                    # Use a more stable update for the bias
-                    net['B'][l][k][0] -= np.clip(np.sign(derB[l][k][0]) * deltaB[l], -1e10, 1e10)
-                    #print('\nnetB: ',net['B'][l][k][0])
-
-                # Update the old derivatives
-                oldDerW[l], oldDerB[l] = derW[l][k][m], derB[l][k][0]
-
-    return net
-
-'''
-#Versione con np.all
-def rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB, posEta=1.2, negEta=0.5):
-    
-    for l in range(len(net['W'])):
-        
-        #print('\nderW: ',derW[l][k][m], '\noldDerW: ',oldDerW[l])
-        # If the derivative has the same sign, increase delta, else decrease it
-        if np.all(oldDerW[l] * derW[l] > 0):
-            deltaW[l] = deltaW[l] * posEta
-            #print('\ndeltaW1: ',deltaW[l])
-        else:
-            deltaW[l] = deltaW[l] * negEta
-            #print('\ndeltaW2: ',deltaW[l])
-                    
-        if np.all(oldDerB[l] * derB[l] > 0):
-            deltaB[l] = deltaB[l] * posEta
-            #print('\ndeltaB1: ',deltaB[l])
-        else:
-            deltaB[l] = deltaB[l] * negEta
-            #print('\ndeltaB2: ',deltaB[l])
-                    
+                #if oldDerW[l][k][m] * derW[l][k][m] > 0:
+                net['W'][l][k][m] -= np.clip(np.sign(derW[l][k][m]) * deltaW[l][k][m], -1e10, 1e10)
+                #print('\nnetW Dopo: ',net['W'][l][k][m])
                 
-        # If the derivative has the same sign, update the weight/bias
-        if np.all(oldDerW[l] * derW[l]> 0):
-            net['W'][l] -= np.clip(np.sign(derW[l]) * deltaW[l], -1e10, 1e10)
-            #print('\nnetW: ',net['W'][l][k][m])
-        if np.all(oldDerB[l] * derB[l] > 0):
-            # Use a more stable update for the bias
-            net['B'][l]-= np.clip(np.sign(derB[l]) * deltaB[l], -1e10, 1e10)
+                #print('Prima olderW', oldDerW[l][k][m], 'Prima newW', derW[l][k][m])
+                oldDerW[l][k][m] = derW[l][k][m]
+                
+    for l in range(len(net['B'])):
+        for k in range(len(derB[l])):   
+            if oldDerB[l][k][0] * derB[l][k][0] > 0:
+                deltaB[l][k][0] = min(deltaB[l][k][0] * posEta, stepSizesPlus)
+                #print('\ndeltaB1: ',deltaB[l][k][0])
+            elif oldDerW[l][k][0] * derW[l][k][0] < 0:
+                deltaB[l][k][0] = max(deltaB[l][k][0] * negEta, stepSizesMinus)
+                #print('\ndeltaB2: ',deltaB[l][k][0])
+                
+            #if oldDerB[l][k][0] * derB[l][k][0] > 0:
+            net['B'][l][k][0] -= np.clip(np.sign(derB[l][k][0]) * deltaB[l][k][0], -1e10, 1e10)
             #print('\nnetB: ',net['B'][l][k][0])
 
             # Update the old derivatives
-        oldDerW[l], oldDerB[l] = derW[l], derB[l]
+            oldDerB[l][k][0] =  derB[l][k][0]
 
     return net
-'''
 
 
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
 def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100, 
                 errFun=myerr.crossEntropyMCSoftMax, eta=0.1):
     ######## Initialization of the learning process#####
     errTot=[]
     errValTot=[]
     dep=net['Depth']
-<<<<<<< HEAD
-    #bInd=splitKFolds(YTrain)
-=======
-    # Initialize update values
-    deltaW = [0.1] * len(net['W'])
-    deltaB = [0.1] * len(net['B'])
+
     # Pesi dell'epoca precedente
-    oldDerW = [0] * len(net['W'])
-    oldDerB = [0] * len(net['B'])
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
+    deltaW, deltaB, oldDerW, oldDerB = None, None, None, None
         
     #Epoca 0
     #Fase di Training
@@ -422,31 +346,24 @@ def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100,
     #Inizio fase di Training
     for epoch in range(maxNumEpoches):
         
-<<<<<<< HEAD
-        #Fase di Training
-        derW,derB=back_prop(net,XTrain,YTrain,errFun)
-        
-        #Aggiornament dei pesi
-        for l in range(dep):
-            net['W'][l]=net['W'][l]-eta*derW[l]
-            net['B'][l]=net['B'][l]-eta*derB[l]
-        
-        Ynet=forward_prop(net,XTrain)
-        
-=======
         l_z,l_da=gradient_descent(net,XTrain)
-        #Fase di Training
+            
         derW,derB=back_prop(net,l_da,l_z,YTrain,errFun)
         
-        #Aggiornament dei pesi
-        #for l in range(dep):
-            #net['W'][l]=net['W'][l]-eta*derW[l]
-            #net['B'][l]=net['B'][l]-eta*derB[l]
+        if(epoch == 0):
+            for l in range(dep):
+                net['W'][l]=net['W'][l]-eta*derW[l]
+                net['B'][l]=net['B'][l]-eta*derB[l]
+                
+            deltaW = cp.copy(derW)
+            deltaB = cp.copy(derB)
+            oldDerW = deepcopy(derW)
+            oldDerB = deepcopy(derB)
+        else:
+            net=rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB)
         
-        net=rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB)
-        
+        ##############################################################################################
         Ynet=forward_prop(net,XTrain)
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
         err=errFun(Ynet,YTrain)
         errTot.append(err)
         

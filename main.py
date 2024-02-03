@@ -35,7 +35,7 @@ print(Xtrain.shape, Ytrain.shape, Xval.shape, Yval.shape, Xtest.shape, Ytest.sha
 
 
 #A neural network with just one hidden layer is created
-NUM_HIDDEN_NEURONS=[2]
+NUM_HIDDEN_NEURONS=[2, 2]
 mia_net=mylib.new_net(Xtrain.shape[0],NUM_HIDDEN_NEURONS,Ytrain.shape[0])
 mylib.set_actfun(mia_net, act_fun=myact.tanh, layer_type=1)
 #mylib.set_actfun(mia_net, act_fun=myact.relu, layer_type=1)
@@ -44,19 +44,12 @@ mylib.get_net_structure(mia_net,show=1)
 
 #A copy of the network is made, so one can restore the original neural network,
 # if one wants
-<<<<<<< HEAD
-#train_mia_net=mylib.duplicateNetwork(mia_net)
-#mylib.get_net_structure(train_mia_net,show=1)
 
-#batch training
-err,errV=mylib.trainingPhase(mia_net,Xtrain,Ytrain,Xval,Yval,maxNumEpoches=100,errFun= myerr.crossEntropyMCSoftMax,eta=0.00001)
-=======
 train_mia_net=mylib.duplicateNetwork(mia_net)
 mylib.get_net_structure(train_mia_net,show=1)
 
 #batch training
 err,errV=mylib.trainingPhase(train_mia_net,Xtrain,Ytrain,Xval,Yval,maxNumEpoches=100,errFun= myerr.crossEntropyMCSoftMax,eta=0.00001)
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
 
 
 plt.figure()
@@ -68,13 +61,8 @@ plt.legend()
 plt.show()
 
 #Accuracy on both the training and test set
-<<<<<<< HEAD
-acc=mylib.netAccuracy(mia_net,Xtest,Ytest)
-print('test accuracy: ',acc)
-acc=mylib.netAccuracy(mia_net,Xtrain,Ytrain)
-=======
+
 acc=mylib.netAccuracy(train_mia_net,Xtest,Ytest)
 print('test accuracy: ',acc)
 acc=mylib.netAccuracy(train_mia_net,Xtrain,Ytrain)
->>>>>>> parent of d68d946 (Revert "Pushed Neural Network")
 print('train accuracy: ',acc)
