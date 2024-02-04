@@ -17,131 +17,156 @@ from copy import deepcopy
 # - back_prop(net,x,t,err_fun)
 #**************************************
 
-# Function to store the main structures for a multi-layer feed-forward neural network
-#-in_size is the input size, 
-#-hidden_size is an array (list) holding the number of neurons for each hidden layer
-#-out_size is the output size
-def new_net(in_size,hidden_size,out_size):
-    sigma=0.001
-    weights=[]
-    biases=[]
-    act_fun=[]
-    j=in_size
-    #Note that weights of the l-th layer are memorized 
-    # as a matrix m_l x m_{l-1} (where l-1 is the previous
-    # neuron layer or the input layer, and the biases as a matrix
-    # m_l x 1 
-    for i in hidden_size:  # for example: hidden_size=[5,3] hidden_size è la lista di nodi interni per ogni livello, poiché ha un solo elemento allora abbiamo un solo strato interno
-        #Creiamo una matrice di bias e di pesi per ogni strato (lunghezza della lista hidden_size)
-        biases.append(sigma*np.random.normal(size=[i,1])) 
-        weights.append(sigma*np.random.normal(size=[i,j])) 
-        j=i
-        act_fun.append(af.tanh)
-        
-    weights.append(sigma*np.random.normal(size=[out_size,j]))
-    biases.append(sigma*np.random.normal(size=[out_size,1]))
-    act_fun.append(af.identity)
-    n_net={'W':weights,'B':biases,'ActFun':act_fun,'Depth':len(weights)}
-    return n_net
+def new_network(input_size, hidden_sizes, output_size):
+    """
+    Create a new neural network with random weights and biases.
 
-#- net is the network. Remember that it is an in-out parameter 
-#- n_layer is either a list composed of integer, the integer i corresponds
-#  to the i-th layer starting from the first hidden layer, or
-#  n_layer is just one integer i corresponding
-#  to the i-th layer, starting from the first hidden layer
-#- weight_m is either a list composed of matrices or
-#  a single matrix.
-#- bias is a flag. When bias is equal to 0 (default), the function is used
-#  to set the weights, if it is equal to 1, the function is used to set the biases.
-def set_weights(net,n_layer,weight_m, bias=0):
-    if np.isscalar(n_layer):
-        if bias==0:
-            net['W'][n_layer-1]=weight_m.copy()
+    Parameters:
+    - input_size: Number of input neurons.
+    - hidden_sizes: List containing the number of neurons for each hidden layer.
+    - output_size: Number of output neurons.
+
+    Returns:
+    - neural_network: Dictionary containing network parameters (weights, biases, activation functions, depth).
+    """
+
+    sigma = 0.001
+    weights = []
+    biases = []
+    activation_functions = []
+    prev_layer_size = input_size
+
+    # Create weights, biases, and activation functions for hidden layers
+    for hidden_size in hidden_sizes:
+        biases.append(sigma * np.random.normal(size=[hidden_size, 1]))
+        weights.append(sigma * np.random.normal(size=[hidden_size, prev_layer_size]))
+        activation_functions.append(af.tanh)  # Using tanh as activation function for hidden layers
+        prev_layer_size = hidden_size
+
+    # Create weights, biases, and activation function for the output layer
+    weights.append(sigma * np.random.normal(size=[output_size, prev_layer_size]))
+    biases.append(sigma * np.random.normal(size=[output_size, 1]))
+    activation_functions.append(af.identity)  # Using identity as activation function for the output layer
+
+    # Create the neural network dictionary
+    neural_network = {'W': weights, 'B': biases, 'ActFun': activation_functions, 'Depth': len(weights)}
+
+    return neural_network
+
+
+def set_weights(network, layer_indices, weight_matrices, bias=0):
+    """
+    Set weights or biases for specific layers in a neural network.
+
+    Parameters:
+    - network: Dictionary containing network parameters (weights, biases).
+    - layer_indices: Single layer index or list of layer indices to set weights or biases.
+    - weight_matrices: Single weight matrix or list of weight matrices to set.
+    - bias: Flag indicating whether to set weights (0) or biases (1).
+
+    Returns:
+    - Updated neural network dictionary.
+    """
+
+    # Check if layer_indices is a scalar or a list
+    if np.isscalar(layer_indices):
+        if bias == 0:
+            network['W'][layer_indices - 1] = weight_matrices.copy()
         else:
-            net['B'][n_layer-1]=weight_m.copy()
-
+            network['B'][layer_indices - 1] = weight_matrices.copy()
     else:
-        count=0
-        if bias==0:
-            for i in n_layer:
-                net['W'][i-1]=weight_m[count].copy()
-                count=count+1
+        count = 0
+        # Set weights or biases for multiple layers
+        if bias == 0:
+            for i in layer_indices:
+                network['W'][i - 1] = weight_matrices[count].copy()
+                count += 1
         else:
-            for i in n_layer:
-                net['B'][i-1]=weight_m[count].copy()
-                count=count+1
+            for i in layer_indices:
+                network['B'][i - 1] = weight_matrices[count].copy()
+                count += 1
 
-#- net is the network. Remember that it is an in-out parameter 
-#- n_layer is either a list composed of integer, the integer i corresponds
-#  to the i-th layer starting from the first hidden layer, or
-#  n_layer is just one integer i corresponding
-#  to the i-th layer, starting from the first hidden layer
-#- act_f is either a list composed of activation function names or
-#  a single activation function name. The activation function must be already implemented.
-# - layer_type is a flag. If it is equal to 0 we have the previous behavior, if it is equal to
-#.  1, then all the hidden layers are set to the passed activation function. Finally, if it is 
-#.  equal to 2, then the activation function of the output layer is only considered.
-# Here, some examples of usage:
-# x=np.random.normal(size=[5,4])
-# mia_net=mylib.new_net(5,[2,4],3)
-# mylib.get_net_structure(mia_net,1)
-# mylib.set_actfun(mia_net,[1,3],[myact.sigm,myact.identity])
-# mylib.get_net_structure(mia_net,1)
-# mylib.set_actfun(mia_net,2,myact.relu)
-# mylib.get_net_structure(mia_net,1)
-# mylib.set_actfun(mia_net,[],myact.sigm,1)
-# mylib.get_net_structure(mia_net,1)
-# mylib.set_actfun(mia_net,[],myact.tanh,2)
-# mylib.get_net_structure(mia_net,1)
-# z=mylib.forward_prop(mia_net,x)
-def set_actfun(net,n_layer=[],act_fun=af.tanh,layer_type=0):
-    if layer_type==0: # set just one layer or a selected number of layers
-        if np.isscalar(n_layer):
-            net['ActFun'][n_layer-1]=act_fun
+    return network
+
+
+def set_activation_function(network, layer_indices=[], activation_function=af.tanh, layer_type=0):
+    """
+    Set activation function for specific layers or all layers in a neural network.
+
+    Parameters:
+    - network: Dictionary containing network parameters (activation functions).
+    - layer_indices: Single layer index or list of layer indices to set activation function.
+    - activation_function: Activation function to set.
+    - layer_type: Flag indicating the type of layers to set activation function (0 for specific layers, 1 for all hidden layers, 2 for output layer).
+
+    Returns:
+    - Updated neural network dictionary.
+    """
+
+    if layer_type == 0:  # Set activation function for specific layer(s)
+        if np.isscalar(layer_indices):
+            network['ActFun'][layer_indices - 1] = activation_function
         else:
-            count=0
-            for i in n_layer:
-                net['ActFun'][i-1]=act_fun[count]
-                count=count+1
-    elif layer_type==1: # setting the activation function of all layers whith just one activation function only
-        len=net['Depth']
-        for i in range(len-1):
-            net['ActFun'][i]=act_fun
-    else: # setting the activation function of the output layer only
-        len=net['Depth']
-        net['ActFun'][len-1]=act_fun
+            count = 0
+            for i in layer_indices:
+                network['ActFun'][i - 1] = activation_function[count]
+                count += 1
+    elif layer_type == 1:  # Set activation function for all hidden layers
+        for i in range(network['Depth'] - 1):  # Exclude the output layer
+            network['ActFun'][i] = activation_function
+    else:  # Set activation function for the output layer
+        network['ActFun'][network['Depth'] - 1] = activation_function
+
+    return network
         
-# This function copies weights, biases and activation function
-# from net2 to net1
-def copyParamInNetwork(net1,net2):
-    for l in range(len(net2['W'])):
-        net1['W'][l]=net2['W'][l].copy()
-        net1['B'][l]=net2['B'][l].copy()
-    net1['ActFun']=net2['ActFun']
-    
-# This function returns the network structure
-def get_net_structure(net,show=0):
-    l=len(net['W'])
-    num_hidden_layers= l-1
-    input_size= net['W'][0].shape[1]
-    output_size= net['W'][num_hidden_layers].shape[0]
-    num_neurons_hlayers=[]
-    act_funs=[]
-    for i in range(num_hidden_layers):
-        num_neurons_hlayers.append(net['W'][i].shape[0])
-        act_funs.append(net['ActFun'][i].__name__)
-    act_funs.append(net['ActFun'][num_hidden_layers].__name__)
-    if show>0:
-        print('num_hidden_layers: ',num_hidden_layers)
+        
+def copy_params_in_network(destination_network, source_network):
+    """
+    Copy parameters (weights, biases, activation functions) from one network to another.
+
+    Parameters:
+    - destination_network: Dictionary containing destination network parameters.
+    - source_network: Dictionary containing source network parameters.
+
+    Returns:
+    - None
+    """
+    for l in range(len(source_network['W'])):
+        destination_network['W'][l] = source_network['W'][l].copy()
+        destination_network['B'][l] = source_network['B'][l].copy()
+    destination_network['ActFun'] = source_network['ActFun']
+
+
+def get_net_structure(network, show=0):
+    """
+    Return the structure of the neural network.
+
+    Parameters:
+    - network: Dictionary containing network parameters.
+    - show: Flag indicating whether to print the network structure.
+
+    Returns:
+    - None
+    """
+    num_hidden_layers = len(network['W']) - 1
+    input_size = network['W'][0].shape[1]
+    output_size = network['W'][num_hidden_layers].shape[0]
+    num_neurons_hidden_layers = [network['W'][i].shape[0] for i in range(num_hidden_layers)]
+    activation_functions = [network['ActFun'][i].__name__ for i in range(num_hidden_layers)] + [network['ActFun'][num_hidden_layers].__name__]
+
+    if show > 0:
+        print('num_hidden_layers: ', num_hidden_layers)
         print('input_size: ', input_size)
         print('output_size: ', output_size)
-        print('neurons into hidden layers:')
-        for i in range(len(num_neurons_hlayers)):
-            print(num_neurons_hlayers[i]) 
+        print('neurons in hidden layers:')
+        for neurons in num_neurons_hidden_layers:
+            print(neurons)
         print('activation functions:')
-        for i in range(len(num_neurons_hlayers)+1):
-            print(act_funs[i])
-    return 
+        for act_fun in activation_functions:
+            print(act_fun)
+
+    return
+
 
 # This function creates a new instance of the network
 def duplicateNetwork(net):
@@ -176,136 +201,156 @@ def get_act_fun(net,i=0):
         return AF
 
 
-# - net is the network
-# - x is data organizied as a matrix dxN, d is the
-#   number of features, N is the number of samples
-# - It returns the output of the last layer
-def forward_prop(net,x):
-    W=get_weights(net)
-    B=get_biases(net)
-    AF=get_act_fun(net)
-    ll=net['Depth']
-    z=x
-    for l in range(ll):
-        a=np.matmul(W[l],z)+B[l] # moltiplica la matrice di pesi e z (matrici di input) e gli somma la matrice di bias costituita da una colonna
-        z=AF[l](a) # assegna la funzione di applicazione all'output appena calcolato
-    #Example of usage:
-    #x=np.random.normal(size=[5,4])
-    #mia_net=mylib.new_net(5,[2,4],3)
-    #z=mylib.forward_prop(mia_net,x)
+def forward_propagation(network, x):
+    """
+    Forward propagation through the neural network.
+
+    Parameters:
+    - network: Dictionary containing network parameters (weights, biases, activation functions).
+    - x: Input data organized as a matrix dxN, where d is the number of features, and N is the number of samples.
+
+    Returns:
+    - Output of the last layer.
+    """
+    weights = get_weights(network)
+    biases = get_biases(network)
+    activation_functions = get_act_fun(network)
+    num_layers = network['Depth']
+
+    z = x
+    for l in range(num_layers):
+        a = np.matmul(weights[l], z) + biases[l]
+        z = activation_functions[l](a)
+
     return z
 
-# - net is the network
-# - x are data organizied as a matrix dxN, d is the
-#   number of features, N is the number of samples
-# - It returns two lists, the first list is composed of
-#   the output of each layer including the data input
-#   the first element is the data input, the last element
-#   of the list is the last layer. 
-#   The second list is composed of the derivatives of 
-#   activation funcions computed into the input of each 
-#   layer
-def gradient_descent(net,x):
-    W=get_weights(net)
-    B=get_biases(net)
-    AF=get_act_fun(net)
-    ll=net['Depth']
-    a=[]
-    z=[]
-    d_act=[]
-    z.append(x)
-    for l in range(ll):
-        a.append(np.matmul(W[l],z[l])+B[l])
-        z_c,d_act_c=AF[l](a[l],1) #calcolo derivata della funzione di attivazione con input a[l]
-        d_act.append(d_act_c)
-        z.append(z_c)
-   # net['Out']=z
-   # net['Dact']=d_act
-    return z,d_act
 
-# - net is the network
-# - x are data organizied as a matrix dxN, d is the
-#   number of features, N is the number of samples
-# - t are targets organizied as a matrix cxN, c is the
-#   number of target values (i.e, it corresponds to the numebr
-#.  of output neurons, N is the number of samples
-# - It returns the list of derivatives, which is composed of
-#   the derivatives of each weight layer
+def gradient_descent(network, x):
+    """
+    Compute the forward pass and derivatives of activation functions for each layer.
 
-def back_prop(net,l_da,l_z,t,err_fun):
-    W=net['W']
-    B=net['B']
-    dep=net['Depth']
-    
-    # CALCOLO DEL DELTA PER L'ULTIMO LIVELLO
-    #-1 refers to the last element of the list
-    d_err=err_fun(l_z[-1],t,1) #Calcola la derivata della funzione di errore rispetto all'ultimo output della rete utilizzando la funzione di errore fornita
-    #here delta are computed
-    #**************************
-    delta=[]
-    #Calcolo di delta = dE(n)/da_i
-    delta.insert(0,l_da[-1]*d_err)  #Inserisce il prodotto della derivata dell'errore dell'ultimo input a_i (l_da) in posizione 0 nella lista (RICORDARE CHE Y è STATO OTTENUTO TRAMITE L'UTILIZZO DELLA FUNZIONE DI ATTIVAZIONE DEL LIVELLO RPECEDENTE)
-    
-    #CALCOLO DEL DELTA PER I LIVELLI PRECEDENTI
-    for l in range(dep-1,0,-1):
-        #print('l:',l)
-        # transpose method does not affect the source matrix
-        #print('W[l]:',W[l].shape)
-        #print('delta[-1]:',delta[-1].shape)
-        #print('l_da[l-1]:',l_da[l-1].shape)
-        d_c= l_da[l-1]*np.matmul(W[l].transpose(),delta[0])
-        delta.insert(0,d_c)
-    
-    # calcolo della local low cioè di dE(n)/dW_ij = delta_i * z_j
-    l_der=[]
-    b_der=[]
-    for l in range(0,dep):
-        der_c=np.matmul(delta[l],l_z[l].transpose())
-        l_der.append(der_c)
-        #FINIRE CALCOLO DERIVATE BIAS, ATTENZIONE FORMATO!!!!
-        b_der.append(np.sum(delta[l],1,keepdims=True))
-    return l_der,b_der
+    Parameters:
+    - network: Dictionary containing network parameters (weights, biases, activation functions).
+    - x: Input data organized as a matrix dxN, where d is the number of features, and N is the number of samples.
+
+    Returns:
+    - List of layer outputs (including input and last layer).
+    - List of derivatives of activation functions computed at the input of each layer.
+    """
+    weights = get_weights(network)
+    biases = get_biases(network)
+    activation_functions = get_act_fun(network)
+    num_layers = network['Depth']
+
+    a = []
+    layer_outputs = []
+    activation_derivatives = []
+    layer_outputs.append(x)
+
+    for l in range(num_layers):
+        a.append(np.matmul(weights[l], layer_outputs[l]) + biases[l])
+        z, d_act = activation_functions[l](a[l], 1)
+        activation_derivatives.append(d_act)
+        layer_outputs.append(z)
+
+    return layer_outputs, activation_derivatives
+
+
+
+def back_propagation(network, input_activations, layer_outputs, target, error_function):
+    """
+    Backward propagation algorithm to update weights and biases in a neural network.
+
+    Parameters:
+    - network: Dictionary containing network parameters (weights, biases, depth).
+    - input_activations: List of input activations for each layer.
+    - layer_outputs: List of output activations for each layer.
+    - target: Target output for the given input.
+    - error_function: Error function used to calculate the derivative of the error.
+
+    Returns:
+    - weight_gradients: List of weight gradients for each layer.
+    - bias_gradients: List of bias gradients for each layer.
+    """
+
+    # Extracting network parameters
+    weights = network['W']
+    biases = network['B']
+    depth = network['Depth']
+
+    # Calculate delta for the last layer
+    output_error_derivative = error_function(layer_outputs[-1], target, 1)
+    delta = [input_activations[-1] * output_error_derivative]
+
+    # Calculate delta for the previous layers
+    for l in range(depth - 1, 0, -1):
+        error_derivative = input_activations[l - 1] * np.matmul(weights[l].transpose(), delta[0])
+        delta.insert(0, error_derivative)
+
+    # Calculate weight and bias gradients
+    weight_gradients = []
+    bias_gradients = []
+
+    for l in range(depth):
+        weight_gradient = np.matmul(delta[l], layer_outputs[l].transpose())
+        weight_gradients.append(weight_gradient)
+
+        bias_gradient = np.sum(delta[l], axis=1, keepdims=True)
+        bias_gradients.append(bias_gradient)
+
+    return weight_gradients, bias_gradients
+
     
 
-def rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB, posEta=1.2, negEta=0.5, stepSizesPlus=50, stepSizesMinus=0.00001):
-    
-    for l in range(len(net['W'])):
+def rprop_training_phase(network, derW, derB, deltaW, deltaB, oldDerW, oldDerB, posEta=1.2, negEta=0.5, stepSizesPlus=50, stepSizesMinus=0.00001):
+    """
+    Update weights and biases using the Rprop training algorithm for one training phase.
 
+    Parameters:
+    - network: Dictionary containing network parameters (weights, biases).
+    - derW: List of weight derivatives.
+    - derB: List of bias derivatives.
+    - deltaW: List of weight step sizes.
+    - deltaB: List of bias step sizes.
+    - oldDerW: List of previous weight derivatives.
+    - oldDerB: List of previous bias derivatives.
+    - posEta: Positive learning rate.
+    - negEta: Negative learning rate.
+    - stepSizesPlus: Maximum step size for weight increase.
+    - stepSizesMinus: Minimum step size for weight decrease.
+
+    Returns:
+    - Updated neural network dictionary.
+    """
+    for l in range(len(network['W'])):
         for k in range(len(derW[l])):
-
             for m in range(len(derW[l][k])):
-                #print('derW[l][k]: ',len(derW[l][k]))
-                #print('\nnetW Prima: ',net['W'][l][k][m])
-                #print('\nderW: ',derW[l][k][m], '\noldDerW: ',oldDerW[l])
                 # If the derivative has the same sign, increase delta, else decrease it
                 if oldDerW[l][k][m] * derW[l][k][m] > 0: 
                     deltaW[l][k][m] = min(deltaW[l][k][m] * posEta, stepSizesPlus)
-                    #print('\ndeltaW1: ',deltaW[l][k][m])
+                    
                 elif oldDerW[l][k][m] * derW[l][k][m] < 0:
                     deltaW[l][k][m] = max(deltaW[l][k][m] * negEta, stepSizesMinus)
-                    #print('\ndeltaW2: ',deltaW[l][k][m])
-                
                 oldDerW[l][k][m] = derW[l][k][m]
-                
-        net['W'][l] -= np.sign(derW[l]) * deltaW[l] 
-            
-            
-    for l in range(len(net['B'])):
-        
-        for k in range(len(derB[l])):  
 
+        # Update weights using the sign of derivatives and step sizes
+        network['W'][l] -= np.sign(derW[l]) * deltaW[l]
+            
+    for l in range(len(network['B'])):
+        for k in range(len(derB[l])):
+            # If the derivative has the same sign, increase delta, else decrease it
             if oldDerB[l][k][0] * derB[l][k][0] > 0:
                 deltaB[l][k][0] = min(deltaB[l][k][0] * posEta, stepSizesPlus)
-                #print('\ndeltaB1: ',deltaB[l][k][0])
-            elif oldDerW[l][k][0] * derW[l][k][0] < 0:
+                
+            elif oldDerB[l][k][0] * derB[l][k][0] < 0:
                 deltaB[l][k][0] = max(deltaB[l][k][0] * negEta, stepSizesMinus)
-                #print('\ndeltaB2: ',deltaB[l][k][0])
-            
             oldDerB[l][k][0] =  derB[l][k][0]
-        
-        net['B'][l] -= np.sign(derB[l]) * deltaB[l]
 
-    return net
+        # Update biases using the sign of derivatives and step sizes
+        network['B'][l] -= np.sign(derB[l]) * deltaB[l]
+
+    return network
+
 
 
 def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100, 
@@ -320,13 +365,13 @@ def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100,
         
     #Epoca 0
     #Fase di Training
-    Ynet=forward_prop(net,XTrain)
+    Ynet=forward_propagation(net,XTrain)
     err=errFun(Ynet,YTrain) # la funzione di errore prende in input Ynet e utilizza YTrain come target da confrontare ad Ynet
     errTot.append(err)
     
     #Fase di Validation su dati non visti durante il training
     if len(XVal) > 0:
-        Ynet_val=forward_prop(net,XVal)
+        Ynet_val=forward_propagation(net,XVal)
         err_val=errFun(Ynet_val,YVal)
         errValTot.append(err_val)
         
@@ -334,20 +379,20 @@ def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100,
         bestNet=duplicateNetwork(net)
         print('Epoch:',0,
                       'Train Err:',err,
-                      'Train Accuracy:',computeAccuracy(Ynet,YTrain),
+                      'Train Accuracy:',compute_accuracy(Ynet,YTrain),
                       'Val Err:',err_val,
-                      'Val Accuracy:',computeAccuracy(Ynet_val,YVal)
+                      'Val Accuracy:',compute_accuracy(Ynet_val,YVal)
                      )
     else:
         print('Epoch:',0,'Train Err:',err,
-              'Train Accuracy:',computeAccuracy(Ynet,YTrain))
+              'Train Accuracy:',compute_accuracy(Ynet,YTrain))
         
     #Inizio fase di Training
     for epoch in range(maxNumEpoches):
         
         l_z,l_da=gradient_descent(net,XTrain)
             
-        derW,derB=back_prop(net,l_da,l_z,YTrain,errFun)
+        derW,derB=back_propagation(net,l_da,l_z,YTrain,errFun)
         
         if(epoch == 0):
             for l in range(dep):
@@ -362,15 +407,15 @@ def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100,
             oldDerB = deepcopy(derB)
         else:
             #print('\ndeltaW1: ',deltaW)
-            net=rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB)
+            net=rprop_training_phase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB)
             #print('\ndeltaW2: ',deltaW)
         ##############################################################################################
-        Ynet=forward_prop(net,XTrain)
+        Ynet=forward_propagation(net,XTrain)
         err=errFun(Ynet,YTrain)
         errTot.append(err)
         
         #Fase di validation
-        Ynet_val=forward_prop(net,XVal)
+        Ynet_val=forward_propagation(net,XVal)
         err_val=errFun(Ynet_val,YVal)
         errValTot.append(err_val)
             
@@ -381,23 +426,46 @@ def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100,
                 
         print('Epoch:',epoch+1,
                 'Train Err:',err,
-                'Train Accuracy:',computeAccuracy(Ynet,YTrain),
+                'Train Accuracy:',compute_accuracy(Ynet,YTrain),
                 'Val Err:',err_val,
-                'Val Accuracy:',computeAccuracy(Ynet_val,YVal),end=''
+                'Val Accuracy:',compute_accuracy(Ynet_val,YVal),end=''
             )
         print('\r', end='') 
             
     if len(XVal) > 0:
-        copyParamInNetwork(net,bestNet)
+        copy_params_in_network(net,bestNet)
     return errTot,errValTot
  
     
-def computeAccuracy(y_net,target):
-    N=target.shape[1]
-    z_net=myerr.softMax(y_net)
-    return ((z_net.argmax(0)==target.argmax(0)).sum())/N
+def compute_accuracy(predictions, targets):
+    """
+    Calcola l'accuratezza di un modello.
+
+    Args:
+    - predictions: Array delle previsioni del modello (output della rete neurale)
+    - targets: Array degli obiettivi desiderati
+
+    Returns:
+    - accuracy: Percentuale di accuratezza del modello
+    """
+    num_samples = targets.shape[1]
+
+    # Applica la funzione softmax alle previsioni della rete
+    softmax_predictions = myerr.softMax(predictions)
+
+    # Trova l'indice dell'elemento di valore massimo lungo l'asse delle colonne
+    predicted_classes = np.argmax(softmax_predictions, axis=0)
+
+    # Trova l'indice dell'elemento di valore massimo lungo l'asse delle colonne negli obiettivi desiderati
+    target_classes = np.argmax(targets, axis=0)
+
+    # Confronta gli indici predetti con gli indici degli obiettivi desiderati e calcola l'accuratezza
+    correct_predictions = np.sum(predicted_classes == target_classes)
+    accuracy = correct_predictions / num_samples
+
+    return accuracy
                   
 def netAccuracy(net,X,target):
-    y_net=forward_prop(net,X)
-    return computeAccuracy(y_net,target)
+    y_net=forward_propagation(net,X)
+    return compute_accuracy(y_net,target)
 
