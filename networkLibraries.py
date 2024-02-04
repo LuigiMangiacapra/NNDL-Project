@@ -270,41 +270,40 @@ def back_prop(net,l_da,l_z,t,err_fun):
 def rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB, posEta=1.2, negEta=0.5, stepSizesPlus=50, stepSizesMinus=0.00001):
     
     for l in range(len(net['W'])):
+
         for k in range(len(derW[l])):
+
             for m in range(len(derW[l][k])):
+                #print('derW[l][k]: ',len(derW[l][k]))
                 #print('\nnetW Prima: ',net['W'][l][k][m])
                 #print('\nderW: ',derW[l][k][m], '\noldDerW: ',oldDerW[l])
                 # If the derivative has the same sign, increase delta, else decrease it
-                if oldDerW[l][k][m] * derW[l][k][m] > 0:
+                if oldDerW[l][k][m] * derW[l][k][m] > 0: 
                     deltaW[l][k][m] = min(deltaW[l][k][m] * posEta, stepSizesPlus)
                     #print('\ndeltaW1: ',deltaW[l][k][m])
                 elif oldDerW[l][k][m] * derW[l][k][m] < 0:
                     deltaW[l][k][m] = max(deltaW[l][k][m] * negEta, stepSizesMinus)
                     #print('\ndeltaW2: ',deltaW[l][k][m])
                 
-                # If the derivative has the same sign, update the weight/bias
-                #if oldDerW[l][k][m] * derW[l][k][m] > 0:
-                net['W'][l][k][m] -= np.clip(np.sign(derW[l][k][m]) * deltaW[l][k][m], -1e10, 1e10)
-                #print('\nnetW Dopo: ',net['W'][l][k][m])
-                
-                #print('Prima olderW', oldDerW[l][k][m], 'Prima newW', derW[l][k][m])
                 oldDerW[l][k][m] = derW[l][k][m]
                 
+        net['W'][l] -= np.sign(derW[l]) * deltaW[l] 
+            
+            
     for l in range(len(net['B'])):
-        for k in range(len(derB[l])):   
+        
+        for k in range(len(derB[l])):  
+
             if oldDerB[l][k][0] * derB[l][k][0] > 0:
                 deltaB[l][k][0] = min(deltaB[l][k][0] * posEta, stepSizesPlus)
                 #print('\ndeltaB1: ',deltaB[l][k][0])
             elif oldDerW[l][k][0] * derW[l][k][0] < 0:
                 deltaB[l][k][0] = max(deltaB[l][k][0] * negEta, stepSizesMinus)
                 #print('\ndeltaB2: ',deltaB[l][k][0])
-                
-            #if oldDerB[l][k][0] * derB[l][k][0] > 0:
-            net['B'][l][k][0] -= np.clip(np.sign(derB[l][k][0]) * deltaB[l][k][0], -1e10, 1e10)
-            #print('\nnetB: ',net['B'][l][k][0])
-
-            # Update the old derivatives
+            
             oldDerB[l][k][0] =  derB[l][k][0]
+        
+        net['B'][l] -= np.sign(derB[l]) * deltaB[l]
 
     return net
 
@@ -355,13 +354,16 @@ def trainingPhase(net,XTrain,YTrain,XVal=[],YVal=[], maxNumEpoches=100,
                 net['W'][l]=net['W'][l]-eta*derW[l]
                 net['B'][l]=net['B'][l]-eta*derB[l]
                 
-            deltaW = cp.copy(derW)
-            deltaB = cp.copy(derB)
+            deltaW = [[[0.1 for _ in row] for row in sub_list] for sub_list in derW]
+
+            deltaB = [[[0.1 for _ in row] for row in sub_list] for sub_list in derB]
+
             oldDerW = deepcopy(derW)
             oldDerB = deepcopy(derB)
         else:
+            #print('\ndeltaW1: ',deltaW)
             net=rpropTrainingPhase(net, derW, derB, deltaW, deltaB, oldDerW, oldDerB)
-        
+            #print('\ndeltaW2: ',deltaW)
         ##############################################################################################
         Ynet=forward_prop(net,XTrain)
         err=errFun(Ynet,YTrain)
