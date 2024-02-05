@@ -1,5 +1,5 @@
 import numpy as np
-import networkLibraries as mylib
+import learningFunctions as mylib
 import errorFunctions as myerr
 import activationFunctions as myact
 import datasets as ds

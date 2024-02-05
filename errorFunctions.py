@@ -19,7 +19,7 @@ def sumOfSquares(y,t,der=0):
         return z
 
 #soft-max    
-def softMax(y):
+def softmax(y):
     #soft max is computing considering overflow
     y_exp=np.exp(y-y.max(0))
     z= y_exp/sum(y_exp,0) #here is soft-max
@@ -36,17 +36,17 @@ def softMax(y):
 # - the output is the multiple-class cross-entroy function error with soft-max
 #   CE_err = - Sum_j Sum_i t_{i,j} log (z_{i,j})    
 
-def crossEntropyMCSoftMax(y,t,der=0, epsilon=1e-15):
-    #soft max is computing considering overflow
-    z=softMax(y)
-    
+def cross_entropy_softmax(y, t, der=0, epsilon=1e-15):
+    # Softmax computation considering overflow
+    softmax_output = softmax(y)
+
     # Add epsilon to avoid division by zero and invalid multiplication
-    z = np.clip(z, epsilon, 1 - epsilon)
-    
-    if der==0:
-        #here the cross-entropy with soft-max is computed
-        return -(t*np.log(z)).sum()
+    softmax_output = np.clip(softmax_output, epsilon, 1 - epsilon)
+
+    if der == 0:
+        # Cross-entropy with softmax
+        return -np.sum(t * np.log(softmax_output))
     else:
-        return z-t
-    
+        # Softmax derivative with respect to the input
+        return softmax_output - t
     

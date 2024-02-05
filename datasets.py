@@ -14,7 +14,6 @@ def get_mnist_validation(data, n):
     return X_val, Y_val
 
 
-
 def get_mnist_training(data, n, m):
     data_train = data[12000:m].T
     Y_train = data_train[0]  # Etichette di training
