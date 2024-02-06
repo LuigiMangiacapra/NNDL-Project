@@ -29,3 +29,14 @@ def cross_entropy_softmax(y, t, der=0, epsilon=1e-15):
     else:
         return softmax_output - t
     
+    
+#Funzione di cross-entropy
+def cross_entropy(y, t, der=0, epsilon=1e-15):
+
+    # Aggiunta di epsilon per evitare log (0)
+    y = np.clip(y, epsilon, 1 - epsilon)
+
+    if der == 0:
+        return -np.sum(t * np.log(y))
+    else:
+        return y - t
