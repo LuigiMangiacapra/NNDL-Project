@@ -16,7 +16,7 @@ def copy_params_in_network(destination_network, source_network):
 
 
 #Funzione utilizzata per stampare le caratteritiche della rete
-def get_net_structure(network, show=0):
+def get_net_structure(network):
     num_hidden_layers = network.number_of_hidden_layers
     input_size = network.layers_weights[0].shape[1]
     output_size = network.layers_weights[num_hidden_layers].shape[0]
@@ -24,17 +24,18 @@ def get_net_structure(network, show=0):
     activation_functions = [network.hidden_activation_functions[i].__name__ for i in range(num_hidden_layers)] + [network.hidden_activation_functions[num_hidden_layers].__name__]
     error_function = network.error_function.__name__
 
-    if show > 0:
-        print('num_hidden_layers: ', num_hidden_layers)
-        print('input_size: ', input_size)
-        print('output_size: ', output_size)
-        print('neurons in hidden layers:')
-        for neurons in num_neurons_hidden_layers:
-            print(neurons)
-        print('activation functions:')
-        for act_fun in activation_functions:
-            print(act_fun)
-        print('error_function:', error_function)
+   
+    print('num_hidden_layers: ', num_hidden_layers)
+    print('input_size: ', input_size)
+    print('output_size: ', output_size)
+    print('neurons in hidden layers:')
+    for neurons in num_neurons_hidden_layers:
+        print(neurons)
+    print('activation functions:')
+    for act_fun in activation_functions:
+        print(act_fun)
+    print('error_function:', error_function)
+    
     return
 
 
@@ -62,8 +63,8 @@ def forward_propagation(network, x):
     return z
 
 
-#Calcolo della discesa del gradiente
-def gradient_descent(network, x):
+#Calcolo delle derivate e degli output dei neuroni
+def gradients_computation(network, x):
     #Estrazione dei parametri della rete
     weights = network.layers_weights
     biases = network.layers_bias
@@ -82,8 +83,8 @@ def gradient_descent(network, x):
         result_mul.append(np.matmul(weights[l], layer_outputs[l]) + biases[l])
         
         #Ottenimento della derivata della funzione di attivazione
-        z, d_act = activation_functions[l](result_mul[l], 1)
-        activation_derivatives.append(d_act)
+        z, derivative_activation = activation_functions[l](result_mul[l], 1)
+        activation_derivatives.append(derivative_activation)
         layer_outputs.append(z)
 
     return layer_outputs, activation_derivatives
@@ -120,8 +121,16 @@ def back_propagation(network, input_activations, layer_outputs, target, error_fu
 
     return weight_gradients, bias_gradients
 
-    
+#Funzione discesa del gradiente per l'aggiornamento dei pesi
+def gradient_descent(network, learning_rate, derivative_weights, derivative_biases):
+    num_layers = len(network.layers_weights)
+    for l in range(num_layers):
+        network.layers_weights[l]=network.layers_weights[l]-learning_rate*derivative_weights[l]
+        network.layers_bias[l]=network.layers_bias[l]-learning_rate*derivative_biases[l]
+            
+    return network
 
+#Funzione RProp per l'aggiornamento dei pesi per reti multistrato
 def rprop_training_phase(network, derW, derB, deltaW, deltaB, oldDerW, oldDerB, posEta=1.2, negEta=0.5, deltaMax=50, deltaMin=0.00001):
     
     #Aggiornamento dei pesi
@@ -165,7 +174,6 @@ def rprop_training_phase(network, derW, derB, deltaW, deltaB, oldDerW, oldDerB, 
 def train_neural_network(net, X_train, Y_train, X_val=[], Y_val=[], max_epochs=100, learning_rate=0.1):
     training_errors = []
     validation_errors = []
-    num_layers = len(net.layers_weights)
     error_function = net.error_function
 
     #Inizializzazione delta e derivate precedenti
@@ -175,41 +183,33 @@ def train_neural_network(net, X_train, Y_train, X_val=[], Y_val=[], max_epochs=1
     Y_net_train = forward_propagation(net, X_train)
     train_error = error_function(Y_net_train, Y_train)
     training_errors.append(train_error)
+    
+    #Inizializzazione best_net
+    Y_net_val = forward_propagation(net, X_val)
+    val_error = error_function(Y_net_val, Y_val)
+    validation_errors.append(val_error)
 
-    #Verifica se il validation set ha almeno un elemento
-    if len(X_val) > 0:
-        #Inizializzazione best_net
-        Y_net_val = forward_propagation(net, X_val)
-        val_error = error_function(Y_net_val, Y_val)
-        validation_errors.append(val_error)
-
-        min_val_error = val_error
-        best_net = duplicate_network(net)
-        
-        print(f'Epoch: 0, Train Error: {train_error}, Train Accuracy: {compute_accuracy(Y_net_train, Y_train)}, '
-              f'Val Error: {val_error}, Val Accuracy: {compute_accuracy(Y_net_val, Y_val)}')
-    else:
-        print(f'Epoch: 0, Train Error: {train_error}, Train Accuracy: {compute_accuracy(Y_net_train, Y_train)}')
+    min_val_error = val_error
+    best_net = duplicate_network(net)
+    
+    print(f'0/{max_epochs}, Training Accuracy: {compute_accuracy(Y_net_train, Y_train)}, Validation Accuracy: {compute_accuracy(Y_net_val, Y_val)}')
 
     #Inizio fase di apprendimento
     for epoch in range(max_epochs):
         #Gradient descent e Back-propagation
-        layer_z, layer_da = gradient_descent(net, X_train)
+        layer_z, layer_da = gradients_computation(net, X_train)
         derivative_weights, derivative_biases = back_propagation(net, layer_da, layer_z, Y_train, error_function)
 
-        
         if(epoch == 0):
-            for l in range(num_layers):
-                net.layers_weights[l]=net.layers_weights[l]-learning_rate*derivative_weights[l]
-                net.layers_bias[l]=net.layers_bias[l]-learning_rate*derivative_biases[l]
-            
+            #Aggiornamento pesi tramite discesa del gradiente
+            net = gradient_descent(net, learning_rate, derivative_weights, derivative_biases)
+
             #Inizializzazione dei pesi e dei bias per la funzione RProp
             delta_weights = [[[0.1 for _ in row] for row in sub_list] for sub_list in derivative_weights]
             delta_biases = [[[0.1 for _ in row] for row in sub_list] for sub_list in derivative_biases]
 
             old_derivative_weights = deepcopy(derivative_weights)
             old_derivative_biases = deepcopy(derivative_biases)
-            
         else:        
             #Aggiornamento della rete utilizzando utilizzando la funzione RProp
             net = rprop_training_phase(net, derivative_weights, derivative_biases, delta_weights, delta_biases,
@@ -230,11 +230,9 @@ def train_neural_network(net, X_train, Y_train, X_val=[], Y_val=[], max_epochs=1
             min_val_error = val_error
             best_net = duplicate_network(net)
 
-        print(f'Epoch: {epoch + 1}, Train Error: {train_error}, Train Accuracy: {compute_accuracy(Y_net_train, Y_train)}, '
-              f'Val Error: {val_error}, Val Accuracy: {compute_accuracy(Y_net_val, Y_val)}', end='\r')
+        print(f'{epoch + 1}/{max_epochs}, Training Accuracy: {compute_accuracy(Y_net_train, Y_train)}, Validation Accuracy: {compute_accuracy(Y_net_val, Y_val)}', end='\r')
 
-    if len(X_val) > 0:
-        copy_params_in_network(net, best_net)
+    copy_params_in_network(net, best_net)
 
     return training_errors, validation_errors
 
@@ -260,7 +258,7 @@ def compute_accuracy(predictions, targets):
               
                   
 #Funzione che permette di calcolare l'accuratezza su input diversi
-def netAccuracy(net,X,target):
+def network_accuracy(net,X,target):
     y_net=forward_propagation(net,X)
     return compute_accuracy(y_net,target)
 
