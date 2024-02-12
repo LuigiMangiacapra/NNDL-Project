@@ -174,6 +174,8 @@ def rprop_training_phase(network, derW, derB, deltaW, deltaB, oldDerW, oldDerB, 
 def train_neural_network(net, X_train, Y_train, X_val=[], Y_val=[], max_epochs=100, learning_rate=0.1):
     training_errors = []
     validation_errors = []
+    training_accuracy = []
+    validation_accuracy = []
     error_function = net.error_function
 
     #Inizializzazione delta e derivate precedenti
@@ -192,7 +194,11 @@ def train_neural_network(net, X_train, Y_train, X_val=[], Y_val=[], max_epochs=1
     min_val_error = val_error
     best_net = duplicate_network(net)
     
-    print(f'0/{max_epochs}, Training Accuracy: {compute_accuracy(Y_net_train, Y_train)}, Validation Accuracy: {compute_accuracy(Y_net_val, Y_val)}')
+    accuracy_train = compute_accuracy(Y_net_train, Y_train)
+    accuracy_vali = compute_accuracy(Y_net_val, Y_val)
+    training_accuracy.append(accuracy_train)
+    validation_accuracy.append(accuracy_vali)
+    print(f'0/{max_epochs}, Training Accuracy: {accuracy_train}, Validation Accuracy: {accuracy_vali}')
 
     #Inizio fase di apprendimento
     for epoch in range(max_epochs):
@@ -230,11 +236,15 @@ def train_neural_network(net, X_train, Y_train, X_val=[], Y_val=[], max_epochs=1
             min_val_error = val_error
             best_net = duplicate_network(net)
 
-        print(f'{epoch + 1}/{max_epochs}, Training Accuracy: {compute_accuracy(Y_net_train, Y_train)}, Validation Accuracy: {compute_accuracy(Y_net_val, Y_val)}', end='\r')
+        accuracy_train = compute_accuracy(Y_net_train, Y_train)
+        accuracy_vali = compute_accuracy(Y_net_val, Y_val)
+        training_accuracy.append(accuracy_train)
+        validation_accuracy.append(accuracy_vali)
+        print(f'{epoch + 1}/{max_epochs}, Training Accuracy: {accuracy_train}, Validation Accuracy: {accuracy_vali}', end='\r')
 
     copy_params_in_network(net, best_net)
 
-    return training_errors, validation_errors
+    return training_errors, validation_errors, training_accuracy, validation_accuracy
 
  
 #Funzione utilizzata per calcolare l'accuratezza della rete
